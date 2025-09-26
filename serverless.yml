@@ -1,53 +1,297 @@
-# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+﻿# "org" ensures this Service is used with the correct Serverless Framework Access Key.
 org: juanosoriorico
 # "app" enables Serverless Framework Dashboard features and sharing them with other Services.
 app: ordersguruapi
-# "service" is the name of this project. This will also be added to your AWS resource names.
-service: OrdersGuruApi
+service: orders-api
 
-stages:
-  default:
-    params:
-      tableName: "users-table-${sls:stage}"
+plugins:
+  - ./scripts/sls-bootstrap-user.js
 
 provider:
   name: aws
-  runtime: nodejs20.x
-  # Uncomment to easily set up a custom domain. Read the docs for more details:
-  # https://www.serverless.com/framework/docs/providers/aws/guide/domains
-  # domain: api.example.com
-  iam:
-    role:
-      statements:
-        - Effect: Allow
-          Action:
-            - dynamodb:Query
-            - dynamodb:Scan
-            - dynamodb:GetItem
-            - dynamodb:PutItem
-            - dynamodb:UpdateItem
-            - dynamodb:DeleteItem
-          Resource:
-            - Fn::GetAtt: [UsersTable, Arn]
+  runtime: nodejs18.x
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
   environment:
-    USERS_TABLE: ${param:tableName}
+    TABLE_NAME: OrdersTable-${sls:stage}
+    PRIMARY_KEY: id
+    ADMIN_GROUP: admin
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:GetItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:Query
+        - dynamodb:Scan
+      Resource:
+        - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/OrdersTable-${sls:stage}
+        - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/OrdersTable-${sls:stage}/index/*
 
 functions:
-  api:
-    handler: handler.handler
+  createOrder:
+    handler: src/handlers/orders/create.handler
     events:
-      - httpApi: "*"
+      - http:
+          path: orders
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: { Ref: ApiGatewayAuthorizer }
+
+  getOrder:
+    handler: src/handlers/orders/get.handler
+    events:
+      - http:
+          path: orders/{id}
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: { Ref: ApiGatewayAuthorizer }
+
+  listOrders:
+    handler: src/handlers/orders/list.handler
+    events:
+      - http:
+          path: orders
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: { Ref: ApiGatewayAuthorizer }
+
+  updateOrder:
+    handler: src/handlers/orders/update.handler
+    events:
+      - http:
+          path: orders/{id}
+          method: put
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: { Ref: ApiGatewayAuthorizer }
+
+  removeOrder:
+    handler: src/handlers/orders/remove.handler
+    events:
+      - http:
+          path: orders/{id}
+          method: delete
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: { Ref: ApiGatewayAuthorizer }
+
+  # ---- PRODUCTS
+  createProduct:
+    handler: src/handlers/products/create.handler
+    events:
+      - http:
+          path: products
+          method: post
+          cors: true
+          authorizer: { type: COGNITO_USER_POOLS, authorizerId: { Ref: ApiGatewayAuthorizer } }
+
+  getProduct:
+    handler: src/handlers/products/get.handler
+    events:
+      - http:
+          path: products/{id}
+          method: get
+          cors: true
+          authorizer: { type: COGNITO_USER_POOLS, authorizerId: { Ref: ApiGatewayAuthorizer } }
+
+  listProducts:
+    handler: src/handlers/products/list.handler
+    events:
+      - http:
+          path: products
+          method: get
+          cors: true
+          authorizer: { type: COGNITO_USER_POOLS, authorizerId: { Ref: ApiGatewayAuthorizer } }
+
+  updateProduct:
+    handler: src/handlers/products/update.handler
+    events:
+      - http:
+          path: products/{id}
+          method: put
+          cors: true
+          authorizer: { type: COGNITO_USER_POOLS, authorizerId: { Ref: ApiGatewayAuthorizer } }
+
+  removeProduct:
+    handler: src/handlers/products/remove.handler
+    events:
+      - http:
+          path: products/{id}
+          method: delete
+          cors: true
+          authorizer: { type: COGNITO_USER_POOLS, authorizerId: { Ref: ApiGatewayAuthorizer } }
+
+  # ---- CUSTOMERS
+  createCustomer:
+    handler: src/handlers/customers/create.handler
+    events:
+      - http:
+          path: customers
+          method: post
+          cors: true
+          authorizer: { type: COGNITO_USER_POOLS, authorizerId: { Ref: ApiGatewayAuthorizer } }
+
+  getCustomer:
+    handler: src/handlers/customers/get.handler
+    events:
+      - http:
+          path: customers/{id}
+          method: get
+          cors: true
+          authorizer: { type: COGNITO_USER_POOLS, authorizerId: { Ref: ApiGatewayAuthorizer } }
+
+  listCustomers:
+    handler: src/handlers/customers/list.handler
+    events:
+      - http:
+          path: customers
+          method: get
+          cors: true
+          authorizer: { type: COGNITO_USER_POOLS, authorizerId: { Ref: ApiGatewayAuthorizer } }
+
+  updateCustomer:
+    handler: src/handlers/customers/update.handler
+    events:
+      - http:
+          path: customers/{id}
+          method: put
+          cors: true
+          authorizer: { type: COGNITO_USER_POOLS, authorizerId: { Ref: ApiGatewayAuthorizer } }
+
+  removeCustomer:
+    handler: src/handlers/customers/remove.handler
+    events:
+      - http:
+          path: customers/{id}
+          method: delete
+          cors: true
+          authorizer: { type: COGNITO_USER_POOLS, authorizerId: { Ref: ApiGatewayAuthorizer } }
+
 
 resources:
   Resources:
-    UsersTable:
+    OrdersTable:
       Type: AWS::DynamoDB::Table
       Properties:
+        TableName: OrdersTable-${sls:stage}
+        BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
-          - AttributeName: userId
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: entity
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+          - AttributeName: ownerSub
             AttributeType: S
         KeySchema:
-          - AttributeName: userId
+          - AttributeName: id
             KeyType: HASH
-        BillingMode: PAY_PER_REQUEST
-        TableName: ${param:tableName}
+        GlobalSecondaryIndexes:
+          - IndexName: byEntityCreatedAt
+            KeySchema:
+              - AttributeName: entity
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: byOwnerCreatedAt
+            KeySchema:
+              - AttributeName: ownerSub
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    UserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: orders-${sls:stage}
+        UsernameAttributes:
+          - email
+        AutoVerifiedAttributes:
+          - email
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireLowercase: true
+            RequireUppercase: true
+            RequireNumbers: true
+            RequireSymbols: false
+        Schema:
+          - AttributeDataType: String
+            Name: email
+            Required: true
+            Mutable: true
+
+    UserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        UserPoolId: { Ref: UserPool }
+        ClientName: orders-client-${sls:stage}
+        GenerateSecret: false
+        ExplicitAuthFlows:
+          - ALLOW_USER_PASSWORD_AUTH
+          - ALLOW_REFRESH_TOKEN_AUTH  
+        TokenValidityUnits:
+          AccessToken: minutes
+          IdToken: minutes
+          RefreshToken: days
+        AccessTokenValidity: 60
+        IdTokenValidity: 60
+        RefreshTokenValidity: 30
+
+    AdminGroup:
+      Type: AWS::Cognito::UserPoolGroup
+      Properties:
+        GroupName: admin
+        UserPoolId: { Ref: UserPool }
+        Description: Admins who can delete orders
+
+    ApiGatewayAuthorizer:
+      Type: AWS::ApiGateway::Authorizer
+      Properties:
+        Name: CognitoAuthorizer
+        Type: COGNITO_USER_POOLS
+        RestApiId: { Ref: ApiGatewayRestApi }
+        IdentitySource: method.request.header.Authorization
+        ProviderARNs:
+          - { "Fn::GetAtt": ["UserPool", "Arn"] }
+
+  Outputs:
+    ApiUrl:
+      Value:
+        Fn::Join:
+          - ""
+          - - "https://"
+            - { Ref: ApiGatewayRestApi }
+            - ".execute-api."
+            - { Ref: AWS::Region }
+            - ".amazonaws.com/"
+            - ${sls:stage}
+    UserPoolId:
+      Value: { Ref: UserPool }
+    UserPoolClientId:
+      Value: { Ref: UserPoolClient }
+    TableName:
+      Value: OrdersTable-${sls:stage}
+
+custom:
+  bootstrapUser:
+    enabled: true
+    username: ${opt:username, 'juan@example.com'}   # puedes override con --username
+    password: ${opt:password, 'P@ssw0rd!'}          # o con --password
+    admin: ${opt:admin, true} 
+

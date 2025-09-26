@@ -1,90 +1,186 @@
-<!--
-title: 'Serverless Framework Node Express API service backed by DynamoDB on AWS'
-description: 'This template demonstrates how to develop and deploy a simple Node Express API service backed by DynamoDB running on AWS Lambda using the Serverless Framework.'
-layout: Doc
-framework: v4
-platform: AWS
-language: nodeJS
-priority: 1
-authorLink: 'https://github.com/serverless'
-authorName: 'Serverless, Inc.'
-authorAvatar: 'https://avatars1.githubusercontent.com/u/13742415?s=200&v=4'
--->
+﻿# Orders API (Serverless + Cognito Auth)
 
-# Serverless Framework Node Express API on AWS
+Orders API built with **AWS Lambda**, **API Gateway REST v1** and **DynamoDB**, protected by **Amazon Cognito**.
 
-This template demonstrates how to develop and deploy a simple Node Express API service, backed by DynamoDB table, running on AWS Lambda using the Serverless Framework.
+## Architecture
+- API Gateway (REST) routes to Node.js 18 Lambdas packaged with Serverless Framework.
+- DynamoDB stores orders, products, and customers in a single table with GSIs (`byEntityCreatedAt`, `byOwnerCreatedAt`).
+- Cognito User Pool + API Gateway authorizer enforce JWT auth; the `admin` group guards privileged operations.
+- Plugin `scripts/sls-bootstrap-user.js` provisions a test user after each deploy and prints a ready-to-use IdToken.
 
-This template configures a single function, `api`, which is responsible for handling all incoming requests using the `httpApi` event. To learn more about `httpApi` event configuration options, please refer to [httpApi event docs](https://www.serverless.com/framework/docs/providers/aws/events/http-api/). As the event is configured in a way to accept all incoming requests, the Express.js framework is responsible for routing and handling requests internally. This implementation uses the `serverless-http` package to transform the incoming event request payloads to payloads compatible with Express.js. To learn more about `serverless-http`, please refer to the [serverless-http README](https://github.com/dougmoscrop/serverless-http).
-
-Additionally, it also handles provisioning of a DynamoDB database that is used for storing data about users. The Express.js application exposes two endpoints, `POST /users` and `GET /user/:userId`, which create and retrieve a user record.
-
-## Usage
-
-### Deployment
-
-Install dependencies with:
-
+## Project Structure
 ```
-npm install
-```
-
-and then deploy with:
-
-```
-serverless deploy
+orders-api/
+  serverless.yml
+  package.json
+  scripts/
+    sls-bootstrap-user.js
+  src/
+    handlers/
+      orders/
+      products/
+      customers/
+    lib/
+      auth.js
+      ddb.js
+      http.js
+    validators/
+      orders.js
+      products.js
+      customers.js
+  orders-api.postman_collection.json
+  README.md
 ```
 
-After running deploy, you should see output similar to:
+## Deployment
+Requirements: AWS CLI configured, permissions for CloudFormation/IAM/DynamoDB/API Gateway/Cognito, and Serverless Framework v4 (`npm i -g serverless`).
 
-```
-Deploying "aws-node-express-dynamodb-api" to stage "dev" (us-east-1)
-
-✔ Service deployed to stack aws-node-express-dynamodb-api-dev (109s)
-
-endpoint: ANY - https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com
-functions:
-  api: aws-node-express-dynamodb-api-dev-api (3.8 MB)
+Install dependencies:
+```bash
+npm ci
 ```
 
-_Note_: In current form, after deployment, your API is public and can be invoked by anyone. For production deployments, you might want to configure an authorizer. For details on how to do that, refer to [`httpApi` event docs](https://www.serverless.com/framework/docs/providers/aws/events/http-api/). Additionally, in current configuration, the DynamoDB table will be removed when running `serverless remove`. To retain the DynamoDB table even after removal of the stack, add `DeletionPolicy: Retain` to its resource definition.
-
-### Invocation
-
-After successful deployment, you can create a new user by calling the corresponding endpoint:
-
-```
-curl --request POST 'https://xxxxxx.execute-api.us-east-1.amazonaws.com/users' --header 'Content-Type: application/json' --data-raw '{"name": "John", "userId": "someUserId"}'
+Deploy:
+```bash
+# Dev
+npx serverless deploy --stage dev
+# Prod
+npx serverless deploy --stage prod
 ```
 
-Which should result in the following response:
+Key outputs:
+- `ApiUrl`
+- `UserPoolId`
+- `UserPoolClientId`
+- `TableName`
 
+## Cognito Authentication
+The bootstrap plugin creates `juan@example.com` with password `P@ssw0rd!` (admin group). Override with `--username`, `--password`, or `--admin=false` if needed.
+
+Manual flow:
+```bash
+aws cognito-idp admin-create-user \
+  --user-pool-id <UserPoolId> \
+  --username juan@example.com \
+  --user-attributes Name=email,Value=juan@example.com \
+  --message-action SUPPRESS
+
+aws cognito-idp admin-set-user-password \
+  --user-pool-id <UserPoolId> \
+  --username juan@example.com \
+  --password 'P@ssw0rd!' \
+  --permanent
+
+aws cognito-idp admin-add-user-to-group \
+  --user-pool-id <UserPoolId> \
+  --username juan@example.com \
+  --group-name admin
+
+aws cognito-idp initiate-auth \
+  --client-id <UserPoolClientId> \
+  --auth-flow USER_PASSWORD_AUTH \
+  --auth-parameters USERNAME=juan@example.com,PASSWORD='P@ssw0rd!'
+```
+Copy `AuthenticationResult.IdToken` and use it as a Bearer token.
+
+## Domain Validations
+- **Products**: require `name`, `price`, unique `sku` (case-insensitive). Only `admin` may create/update/delete.
+- **Customers**: require `name`, unique valid `email`. Owner (`ownerSub`) may update; delete is admin-only.
+- **Orders**: require `customer.id` of an existing customer and `products[{ sku, qty }]` with existing SKUs (no duplicates per order).
+- Validators under `src/validators/*.js` normalize input and query DynamoDB before persisting data.
+
+## DynamoDB Data Model
 ```json
-{ "userId": "someUserId", "name": "John" }
+{
+  "id": "uuid",
+  "entity": "ORDER|PRODUCT|CUSTOMER",
+  "ownerSub": "cognito-sub",
+  "createdAt": "ISO-8601",
+
+  // ORDER extras
+  "customer": { "id": "string" },
+  "customerId": "string",
+  "products": [{ "sku": "string", "qty": 1 }],
+  "productSkus": ["string"],
+  "status": "NEW|PAID|CANCELLED",
+  "total": 12000,
+  "notes": "string?",
+
+  // PRODUCT extras
+  "name": "string",
+  "price": 6000,
+  "sku": "string",
+  "description": "string?",
+  "active": true,
+
+  // CUSTOMER extras
+  "name": "string",
+  "email": "string",
+  "phone": "string?",
+  "address": "string?",
+  "active": true
+}
 ```
 
-You can later retrieve the user by `userId` by calling the following endpoint:
+## Quick cURL Usage
+```bash
+API_URL="https://<restid>.execute-api.us-east-1.amazonaws.com/dev"
+TOKEN="<Cognito IdToken>"
+CUSTOMER_ID="<existing customer id>"
 
+# Create products (admin only)
+curl -X POST "$API_URL/products" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Latte 12oz","price":6000,"sku":"0001"}'
+
+curl -X POST "$API_URL/products" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Espresso doble","price":4000,"sku":"0002"}'
+
+# Create customer
+curl -X POST "$API_URL/customers" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Juan Perez","email":"juan.perez@example.com"}'
+
+# Create order (requires existing customer and SKUs)
+curl -X POST "$API_URL/orders" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "customer": { "id": "'$CUSTOMER_ID'" },
+        "products": [
+          { "sku": "0001", "qty": 2 },
+          { "sku": "0002", "qty": 1 }
+        ],
+        "total": 16000,
+        "status": "NEW",
+        "notes": "Entregar antes de las 10am"
+      }'
 ```
-curl https://xxxxxxx.execute-api.us-east-1.amazonaws.com/users/someUserId
+
+## Postman Collection
+`orders-api.postman_collection.json` contains:
+- `Auth - USER_PASSWORD_AUTH` request to fetch tokens (requires AWS credentials unless you rely on bootstrap output).
+- CRUD requests wired to collection variables (`idToken`, `customerId`, `productId`, etc.).
+- `Orders - Create` request already uses the new structure with `customer.id` and `products[{ sku, qty }]`.
+
+## CI/CD (GitHub Actions + OIDC)
+Workflow `.github/workflows/deploy.yml` deploys automatically:
+- Push to `develop` -> stage `dev`
+- Push to `main` -> stage `prod`
+
+Provision IAM roles that trust `token.actions.githubusercontent.com` and allow CloudFormation, Lambda, API Gateway, DynamoDB, and Cognito operations.
+
+## Cleanup
+```bash
+npx serverless remove --stage dev
+npx serverless remove --stage prod
 ```
 
-Which should result in the following response:
+## Notes
+- Node.js 18 already bundles AWS SDK v3; we keep `aws-sdk` v2 for the DynamoDB DocumentClient.
+- Validators hit DynamoDB; when running locally, pair `serverless offline` with DynamoDB Local or stub the calls.
 
-```json
-{ "userId": "someUserId", "name": "John" }
-```
-
-### Local development
-
-The easiest way to develop and test your function is to use the `dev` command:
-
-```
-serverless dev
-```
-
-This will start a local emulator of AWS Lambda and tunnel your requests to and from AWS Lambda, allowing you to interact with your function as if it were running in the cloud.
-
-Now you can invoke the function as before, but this time the function will be executed locally. Now you can develop your function locally, invoke it, and see the results immediately without having to re-deploy.
-
-When you are done developing, don't forget to run `serverless deploy` to deploy the function to the cloud.
