@@ -1,8 +1,9 @@
-﻿# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+# "org" ensures this Service is used with the correct Serverless Framework Access Key.
 org: juanosoriorico
 # "app" enables Serverless Framework Dashboard features and sharing them with other Services.
 app: ordersguruapi
 service: orders-api
+frameworkVersion: '3'
 
 plugins:
   - ./scripts/sls-bootstrap-user.js
