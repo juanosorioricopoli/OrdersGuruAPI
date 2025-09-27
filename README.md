@@ -57,30 +57,6 @@ Key outputs:
 ## Cognito Authentication
 The bootstrap plugin creates `juan@example.com` with password `P@ssw0rd!` (admin group). Override with `--username`, `--password`, or `--admin=false` if needed.
 
-Manual flow:
-```bash
-aws cognito-idp admin-create-user \
-  --user-pool-id <UserPoolId> \
-  --username juan@example.com \
-  --user-attributes Name=email,Value=juan@example.com \
-  --message-action SUPPRESS
-
-aws cognito-idp admin-set-user-password \
-  --user-pool-id <UserPoolId> \
-  --username juan@example.com \
-  --password 'P@ssw0rd!' \
-  --permanent
-
-aws cognito-idp admin-add-user-to-group \
-  --user-pool-id <UserPoolId> \
-  --username juan@example.com \
-  --group-name admin
-
-aws cognito-idp initiate-auth \
-  --client-id <UserPoolClientId> \
-  --auth-flow USER_PASSWORD_AUTH \
-  --auth-parameters USERNAME=juan@example.com,PASSWORD='P@ssw0rd!'
-```
 Copy `AuthenticationResult.IdToken` and use it as a Bearer token.
 
 ## Domain Validations
@@ -163,14 +139,20 @@ curl -X POST "$API_URL/orders" \
 
 ## Postman Collection
 `orders-api.postman_collection.json` contains:
-- `Auth - USER_PASSWORD_AUTH` request to fetch tokens (requires AWS credentials unless you rely on bootstrap output).
+
 - CRUD requests wired to collection variables (`idToken`, `customerId`, `productId`, etc.).
 - `Orders - Create` request already uses the new structure with `customer.id` and `products[{ sku, qty }]`.
 
-## CI/CD (GitHub Actions + OIDC)
+## CI/CD (GitHub Actions)
 Workflow `.github/workflows/deploy.yml` deploys automatically:
-- Push to `develop` -> stage `dev`
-- Push to `main` -> stage `prod`
+- Push to `dev` -> stage `dev`
+- Push to `master` -> stage `prod`
+
+## Configurations
+## Create Secrets 
+
+
+
 
 Provision IAM roles that trust `token.actions.githubusercontent.com` and allow CloudFormation, Lambda, API Gateway, DynamoDB, and Cognito operations.
 
@@ -181,6 +163,6 @@ npx serverless remove --stage prod
 ```
 
 ## Notes
-- Node.js 18 already bundles AWS SDK v3; we keep `aws-sdk` v2 for the DynamoDB DocumentClient.
+- Node.js 22 already bundles AWS SDK v3; we keep `aws-sdk` v2 for the DynamoDB DocumentClient.
 - Validators hit DynamoDB; when running locally, pair `serverless offline` with DynamoDB Local or stub the calls.
 
