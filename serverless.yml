@@ -3,14 +3,14 @@ org: juanosoriorico
 # "app" enables Serverless Framework Dashboard features and sharing them with other Services.
 app: ordersguruapi
 service: orders-api
-frameworkVersion: '3'
+#frameworkVersion: '3'
 
 plugins:
   - ./scripts/sls-bootstrap-user.js
 
 provider:
   name: aws
-  runtime: nodejs20.x
+  runtime: nodejs22.x
   region: us-east-1
   stage: ${opt:stage, 'dev'}
   environment:
