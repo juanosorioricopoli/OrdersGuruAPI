@@ -10,7 +10,7 @@ plugins:
 
 provider:
   name: aws
-  runtime: nodejs22.x
+  runtime: nodejs20.x
   region: us-east-1
   stage: ${opt:stage, 'dev'}
   environment:
@@ -295,4 +295,5 @@ custom:
     username: ${opt:username, 'juan@example.com'}   # puedes override con --username
     password: ${opt:password, 'P@ssw0rd!'}          # o con --password
     admin: ${opt:admin, true} 
+
 
