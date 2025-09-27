@@ -17,7 +17,7 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  NODE_VERSION: '22'
+  NODE_VERSION: '20'
 
 jobs:
   
@@ -40,7 +40,7 @@ jobs:
         run: npm ci
 
       - name: Install Serverless CLI
-        run: npm install -g serverless@4
+        run: npm install -g serverless@3
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -71,7 +71,7 @@ jobs:
         run: npm ci
 
       - name: Install Serverless CLI
-        run: npm install -g serverless@4
+        run: npm install -g serverless@3
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
