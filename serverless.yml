@@ -17,6 +17,8 @@ provider:
     TABLE_NAME: OrdersTable-${sls:stage}
     PRIMARY_KEY: id
     ADMIN_GROUP: admin
+    USER_POOL_ID: { Ref: UserPool }
+    USER_POOL_CLIENT_ID: { Ref: UserPoolClient }
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -31,6 +33,14 @@ provider:
         - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/OrdersTable-${sls:stage}/index/*
 
 functions:
+  login:
+    handler: src/handlers/auth/login.handler
+    events:
+      - http:
+          path: auth/login
+          method: post
+          cors: true
+
   createOrder:
     handler: src/handlers/orders/create.handler
     events:
