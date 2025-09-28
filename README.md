@@ -7,6 +7,60 @@ REST API for orders, products, and customers built on **AWS Lambda**, **API Gate
 - A single DynamoDB table stores all entities; GSIs `byEntityCreatedAt` and `byOwnerCreatedAt` back list queries.
 - Cognito User Pool + API Gateway authorizer enforce JWT auth; the `admin` group guards privileged endpoints.
 - `scripts/sls-bootstrap-user.js` seeds a test user after each deploy and prints a usable IdToken.
+## AWS Architecture Diagram
+```mermaid
+graph TD
+    subgraph Client Apps
+        Postman[Postman / cURL]
+        Frontend[Web / Mobile Client]
+    end
+
+    subgraph AWS
+        APIGW[Amazon API Gateway<br/>REST API]
+        Authorizer[Cognito Authorizer]
+        LoginFunction[Lambda: auth/login]
+        OrdersFunction[Lambda: orders handlers]
+        ProductsFunction[Lambda: products handlers]
+        CustomersFunction[Lambda: customers handlers]
+        DynamoDB[(DynamoDB OrdersTable-<stage>)]
+        Cognito[Cognito User Pool]
+        GroupAdmin[Cognito Group: admin]
+    end
+
+    subgraph Tooling
+        SLSCLI[Serverless Framework CLI]
+        BootstrapScript[scripts/sls-bootstrap-user.js]
+        GitHubActions[GitHub Actions CI/CD]
+    end
+
+    Postman -->|POST /auth/login| APIGW
+    Frontend -->|REST calls| APIGW
+
+    APIGW -->|/auth/login| LoginFunction
+    LoginFunction --> Cognito
+
+    APIGW --> Authorizer
+    Authorizer --> Cognito
+
+    Authorizer -->|JWT claims| APIGW
+    APIGW --> OrdersFunction
+    APIGW --> ProductsFunction
+    APIGW --> CustomersFunction
+
+    OrdersFunction --> DynamoDB
+    ProductsFunction --> DynamoDB
+    CustomersFunction --> DynamoDB
+
+    Cognito --> GroupAdmin
+
+    SLSCLI -->|Deploy, remove| AWS
+    BootstrapScript --> Cognito
+    BootstrapScript --> GroupAdmin
+    BootstrapScript -->|Seeds test user + logs IdToken| Cognito
+
+    GitHubActions -->|CI/CD Pipeline| SLSCLI
+```
+
 
 ## Project Structure
 ```
@@ -223,4 +277,7 @@ curl -X POST "$API_URL/orders" \
 - Node.js 20 already bundles AWS SDK v3; `aws-sdk` v2 is used for DynamoDB DocumentClient compatibility.
 - For local development against DynamoDB Local, adjust `lib/ddb.js` to point to the local endpoint.
 - The `pipeline/` folder contains CloudFormation and CodeBuild definitions if you prefer AWS CodePipeline instead of GitHub Actions.
+
+
+
 
