@@ -1,5 +1,5 @@
 const { ddb, TableName, PrimaryKey } = require('../../lib/ddb');
-const { noContent, badRequest, notFound } = require('../../lib/http');
+const { ok, badRequest, notFound } = require('../../lib/http');
 const { getClaims, isAdmin } = require('../../lib/auth');
 
 exports.handler = async (event) => {
