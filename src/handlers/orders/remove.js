@@ -8,5 +8,5 @@ exports.handler = async (event) => {
 
   const id = event.pathParameters && event.pathParameters.id;
   await ddb.delete({ TableName, Key: { [PrimaryKey]: id } }).promise();
-  return noContent();
+  return true;
 };
