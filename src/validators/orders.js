@@ -133,7 +133,6 @@ async function validateOrderCreate(payload) {
   const notes = normalizeNotes(payload.notes);
 
   const sanitized = {
-    customer,
     customerId: customer.id,
     products,
     productSkus: products.map((p) => p.sku),

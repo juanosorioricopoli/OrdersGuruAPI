@@ -69,9 +69,26 @@ OrdersGuruApi/
   package.json
   src/
     handlers/
+      auth/
+        login.js
       orders/
+        create.js
+        get.js
+        list.js
+        remove.js
+        update.js
       products/
+        create.js
+        get.js
+        list.js
+        remove.js
+        update.js
       customers/
+        create.js
+        get.js
+        list.js
+        remove.js
+        update.js
     lib/
       auth.js
       ddb.js
@@ -82,13 +99,10 @@ OrdersGuruApi/
       customers.js
   scripts/
     sls-bootstrap-user.js
+  config_cicd/
   .github/
     workflows/
       deploy.yml
-  pipeline/
-    buildspec-deploy-dev.yml
-    buildspec-deploy-prod.yml
-    codepipeline-template.yml
   orders-api.postman_collection.json
   README.md
 ```
@@ -98,7 +112,7 @@ OrdersGuruApi/
 - IAM role/user with access keys configured locally (`aws configure`).
 - `serverlessApiGatewayCloudWatchRole` IAM role (trusted entity `apigateway.amazonaws.com`) with policy `AmazonAPIGatewayPushToCloudWatchLogs` so API Gateway can ship logs.
 - Node.js 20+ and npm.
-- Serverless Framework v3 (`npm i -g serverless@3`).
+- Serverless Framework (`npm i -g serverless`).
 
 ## Local Deployment
 Install dependencies:
@@ -130,11 +144,11 @@ npx serverless remove --stage prod
 ## Cognito Bootstrap User
 The bootstrap plugin creates `juan@example.com` with password `P@ssw0rd!` and adds it to the `admin` group. Override defaults with `--username`, `--password`, or `--admin=false`. Copy the `AuthenticationResult.IdToken` from the deploy logs and use it as a Bearer token.
 
-## Autenticacion via API
-- `POST /auth/login` genera IdToken, AccessToken y RefreshToken usando AWS Cognito. Envia `{"username":"<email>","password":"<password>"}` y recibe tokens listos para el resto de peticiones.
-- Envia solo `{"refreshToken":"<token>"}` para rotar credenciales sin reenviar el password; la funcion reutiliza el refresh token si Cognito no entrega uno nuevo.
-- La funcion Lambda vive en `src/handlers/auth/login.js` y no requiere authorizer, por lo que puede consumirse desde clientes web o scripts.
-- `USER_POOL_CLIENT_ID` y `USER_POOL_ID` se inyectan como variables de entorno desde CloudFormation para este handler.
+## Authentication via API
+- `POST /auth/login` Generates IdToken, AccessToken, and RefreshToken using AWS Cognito. Send `{"username":"<email>","password":"<password>"}`and receives tokens ready for the rest of the requests.
+- Send alone `{"refreshToken":"<token>"}` To rotate credentials without resending the password; the function reuses the refresh token if Cognito doesn't deliver a new one.
+- The Lambda function in `src/handlers/auth/login.js` It does not require an authorizer, so it can be consumed from web clients or scripts..
+- `USER_POOL_CLIENT_ID` and `USER_POOL_ID` are injected as environment variables from CloudFormation for this handler.
 
 ## Domain Validations
 - **Products**: require `name`, `price`, and unique `sku` (case-insensitive). Only `admin` can mutate.
@@ -150,8 +164,6 @@ Validators located in `src/validators/*` query DynamoDB before persisting change
   "entity": "ORDER|PRODUCT|CUSTOMER",
   "ownerSub": "cognito-sub",
   "createdAt": "ISO-8601",
-
-  "customer": { "id": "string" },
   "customerId": "string",
   "products": [{ "sku": "string", "qty": 1 }],
   "productSkus": ["string"],
