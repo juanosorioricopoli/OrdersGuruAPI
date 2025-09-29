@@ -1,5 +1,5 @@
 const { ddb, TableName, PrimaryKey } = require('../../lib/ddb');
-const { badRequest, notFound } = require('../../lib/http');
+const { ok, badRequest, notFound } = require('../../lib/http');
 const { getClaims, isAdmin } = require('../../lib/auth');
 
 exports.handler = async (event) => {
@@ -16,5 +16,5 @@ exports.handler = async (event) => {
   }).promise();
 
   if (!result.Attributes) return notFound('Order not found');
-  return true;
+  return ok({ deleted: true });
 };
