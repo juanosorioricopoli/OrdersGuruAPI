@@ -10,6 +10,13 @@ exports.handler = async (event) => {
   const res = await ddb.get({ TableName, Key: { [PrimaryKey]: id } }).promise();
   if (!res.Item || res.Item.entity !== 'CUSTOMER') return notFound('Customer not found');
 
-  await ddb.delete({ TableName, Key: { [PrimaryKey]: id } }).promise();
-  return true;
+
+  const result = await ddb.delete({ 
+    TableName, 
+    Key: { [PrimaryKey]: id },
+    ReturnValues: 'ALL_OLD'
+  }).promise();
+
+  if (!result.Attributes) return notFound('Customer not found');
+  return ok({ deleted: true });
 };
