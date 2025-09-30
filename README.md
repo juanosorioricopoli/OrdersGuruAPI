@@ -290,6 +290,17 @@ curl -X POST "$API_URL/orders" \
 - For local development against DynamoDB Local, adjust `lib/ddb.js` to point to the local endpoint.
 - The `pipeline/` folder contains CloudFormation and CodeBuild definitions if you prefer AWS CodePipeline instead of GitHub Actions.
 
+## Explanatory Videos
+
+- Project explanation https://www.loom.com/share/fa0261c675054a31aa02134d70117c8f?sid=a05bc1c3-8b5f-4e9e-b437-39fb32dfbfa1
+
+- Explanation of code and validations https://www.loom.com/share/9f24eec5233846e4b11e7b8a867f5593?sid=c4b29328-0691-493f-808a-aefe39de26bb
+
+- Explanation of code serverless.yml https://www.loom.com/share/8a6aff52fbb241c7a0eff692532a1a8c?sid=316b2951-31e1-41a3-b541-b9de713ca622
+
+- Deployment of test environment and API testing https://www.loom.com/share/fd4b7127ce1f4d0ba8adfaaf9656e4f8?sid=57a4aa06-2c5d-46a0-844e-6930af3814ae
+
+- Deploying a prod environment with GitHub Actions https://www.loom.com/share/8e5191c27280471fb3973b58be83f64f?sid=3a487bae-ccdf-4b3a-8c95-0bd211a3d1ab
 
 
 
