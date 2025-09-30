@@ -17,5 +17,5 @@ exports.handler = async (event) => {
   }).promise();
 
   if (!result.Attributes) return notFound('Product not found');
-  return ok({ Product deleted: true });
+  return ok({ deleted: true });
 };
